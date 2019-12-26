@@ -194,7 +194,8 @@ spec:
   ports:
     - name: web
       port: 9090
-      targetPort: http
+      targetPort: 9090
+      nodePort: 39090
 	  
 创建完成之后依次构建 
 kubectl create -f  prometheus_cm.yml  prometheus_rbac.yml prometheus_dp.yml prometheus_svc.yml
