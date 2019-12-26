@@ -336,7 +336,7 @@ curl -X POST "http://192.168.124.149:39090/-/reload"
 
 另外由于 kubelet 也自带了一些监控指标数据，所以我们这里也把 kubelet 的监控任务也一并配置上：
 
-    - job_name: 'kubernetes-kubelet'
+    - job_name: 'kubernetes-nodes-cadvisor'
       kubernetes_sd_configs:
       - role: node
       scheme: https
@@ -347,6 +347,9 @@ curl -X POST "http://192.168.124.149:39090/-/reload"
       relabel_configs:
       - action: labelmap
         regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __metrics_path__
+        replacement: /metrics/cadvisor
+
 或者
     - job_name: "kubernetes-kubelet"
       kubernetes_sd_configs:
