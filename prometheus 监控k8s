@@ -377,4 +377,39 @@ grafana 是一个可视化面板，有着非常漂亮的图表和布局展示，
 接下来我们就来直接安装，同样的，我们将 grafana 安装到 Kubernetes 集群中，第一步同样是去查看 grafana 的 docker 镜像的介绍，我们可以在 dockerhub 上去搜索，也可以在官网去查看相关资料，
 镜像地址如下：https://hub.docker.com/r/grafana/grafana/，我们可以看到介绍中运行 grafana 容器的命令非常简单：$ docker run -d --name=grafana -p 3000:3000 grafana/grafana
 
-我们将部署grafana的pod资源
+容器的监控指标（metrics）
+
+cpu 指标（metrics）
+sum by (pod_name) (rate(container_cpu_usage_seconds_total{container_name!="",image!=""}[1m]))  ##集群中所有pod在一分钟cpu使用的状况
+container_cpu_user_seconds_total   ##容器用户态占用cpu时间的总和
+container_cpu_system_seconds_total  ## 容器内核态占用cpu时间的总和
+container_cpu_usage_seconds_total   ###user和system的总和 记代表容器占用cpu的总和
+sum (rate(container_cpu_cfs_throttled_seconds_total[5m])) by (container_name) ## 此指标过高需要调整cpu上限或者查看程序是否有死循环
+
+memory 指标（metrics）
+container_memory_cache   ##内存中cache的用量
+container_memory_rss   ##常驻的内存用量
+container_memory_swap   ##交换分区用量
+container_memory_usage_bytes  ##内存的总占用量
+container_memory_working_set_bytes  ###判断是否发生OOM的指标
+container_memory_working_set_bytes/kube_pod_container_resource_limits_memory_bytes  ##获得内存使用率
+
+磁盘指标（metrics）
+容器中的磁盘I/O监控指标
+container_fs_writes_bytes_total  ##磁盘写总量
+container_fs_reads_bytes_total    ##磁盘读总量
+sum(rate (container_fs_writes_bytes_total[5m])) by (container_name,device)  ##五分钟的写速率
+
+网络I/O监控指标
+container_network_receive_bytes_total   ###接受总字节数  下行（网络读）
+container_network_transmit_bytes_total  ###磁盘发送总字节数   上行（网络写）
+rate(container_network_transmit_bytes_total[5m])  ##网络的瞬时读写速率
+container_network_receive_packets_dropped_total   ###网络接受丢包输
+container_network_transmit_packets_dropped_total   ## 网络发送丢包数
+container_network_receive_errors_total     ##网络接受错误总数
+container_network_transmit_errors_total    ##网络发送错误总数
+
+
+
+
+
