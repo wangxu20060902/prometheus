@@ -349,7 +349,6 @@ curl -X POST "http://192.168.124.149:39090/-/reload"
         regex: __meta_kubernetes_node_label_(.+)
       - target_label: __metrics_path__
         replacement: /metrics/cadvisor
-
 或者
     - job_name: "kubernetes-kubelet"
       kubernetes_sd_configs:
