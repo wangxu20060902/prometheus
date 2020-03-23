@@ -65,6 +65,9 @@ metadata:
   labels:
     app: prometheus
 spec:
+  selector:
+    matchLabels:
+      app: prometheus
   template:
     metadata:
       labels:
