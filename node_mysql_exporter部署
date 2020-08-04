@@ -60,7 +60,7 @@ password=123456
 vim /usr/lib/systemd/system/mysqld_exporter.service
 
 [Unit]
-Description=node_exporter
+Description=mysqld_exporter
 Documentation=https://prometheus.io/
 After=network.target
 
