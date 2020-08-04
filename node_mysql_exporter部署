@@ -1,0 +1,101 @@
+下载及解压安装包
+
+wget https://github.com/prometheus/node_exporter/releases/download/v0.17.0/node_exporter-0.17.0.linux-amd64.tar.gz
+
+tar -xvf node_exporter-0.17.0.linux-amd64.tar.gz -C /usr/local/prometheus/
+cd  /usr/local/prometheus/
+mv node_exporter-0.17.0.linux-amd64 node_exporter
+
+2、创建用户
+
+groupadd prometheus
+useradd -g prometheus prometheus 
+chown -R prometheus.prometheus node_exporter
+
+3、创建node_exporter.service的 systemd unit 文件
+
+vim /usr/lib/systemd/system/node_exporter.service
+
+[Unit]
+Description=node_exporter
+Documentation=https://prometheus.io/
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+ExecStart=/usr/local/prometheus/node_exporter/node_exporter
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+4、启动服务
+
+systemctl daemon-reload
+systemctl enable node_exporter.service
+systemctl start node_exporter.service
+
+验证是否采集到的信息
+curl 192.168.22.22:9100
+
+mysql exporter 部署
+
+添加账号授权给 mysqld exporter
+ CREATE USER 'exporter'@'192.168.22.22' IDENTIFIED BY '123456' WITH MAX_USER_CONNECTIONS 3;
+GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'192.168.22.22';
+下载对应的exporter地址
+wget https://github.com/prometheus/mysqld_exporter
+
+tar zxvf tar -xvf mysqld_exporter-0.11.0.linux-amd64.tar.gz -C /usr/local/prometheus/
+
+cd /usr/local/prometheus/mysql-exporter && vim .my.cnf
+
+[client]
+host=192.168.22.22
+user=exporter
+password=123456
+
+创建mysqld_exporter.service 的 systemd unit 文件
+vim /usr/lib/systemd/system/mysqld_exporter.service
+
+[Unit]
+Description=node_exporter
+Documentation=https://prometheus.io/
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/prometheus/mysql-exporter/mysqld_exporter --config.my-cnf=/usr/local/prometheus/mysql-exporter/.my.cnf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+启动开机启动
+systemctl daemon-reload
+systemctl enable mysqld_exporter.service
+systemctl start mysqld_exporter.service
+
+或者
+[Unit]
+Description=mysqld_exporter
+After=network.target
+
+[Service]
+Environment=DATA_SOURCE_NAME=exporter:123456@(192.168.22.22:3306)/
+Restart=on-failure
+ExecStart=/usr/local/prometheus/mysqld_exporter/mysqld_exporter
+
+[Install]
+WantedBy=multi-user.target
+
+#######Environment=DATA_SOURCE_NAME=exporter:123456@(192.168.22.22:3306)/ --> 设置 DATA_SOURCE_NAME 变量，包含数据库信息：用户名:密码@(mysql地址:mysql端口)/
+
+启动开机启动
+systemctl daemon-reload
+systemctl enable mysqld_exporter.service
+systemctl start mysqld_exporter.service
+
+验证是否采集到的信息
+curl 192.168.22.22:9104
