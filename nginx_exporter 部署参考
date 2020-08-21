@@ -1,0 +1,79 @@
+prometheus监控nginx
+
+Nginx准备
+首先，在nginx所在host安装以下依赖：
+
+yum -y install gcc pcre pcre-devel zlib zlib-devel openssl openssl-devel
+
+nginx在编译的时候增加moduel 选项 ，路径指向nginx-vts-module的所在目录。nginx-vts-module 下载地址在https://github.com/vozlt/nginx-module-vts/archive/v0.1.15.zip，下载后解压就可以使用。
+nginx在编译的时候增加moduel 选项 ，路径指向nginx-vts-module的所在目录。nginx-vts-module 下载地址在https://github.com/vozlt/nginx-module-vts/archive/v0.1.15.zip，下载后解压就可以使用。
+./configure \ 
+ --group=nginx \ 
+ --user=nginx \ 
+ --prefix=/usr/local/nginx \ 
+ --sbin-path=/usr/sbin/nginx \ 
+ --conf-path=/etc/nginx/nginx.conf \ 
+ --error-log-path=/var/log/nginx/error.log \ 
+ --http-log-path=/var/log/nginx/access.log \ 
+ --http-client-body-temp-path=/tmp/nginx/client_body \ 
+ --http-proxy-temp-path=/tmp/nginx/proxy \ 
+ --http-fastcgi-temp-path=/tmp/nginx/fastcgi \ 
+ --pid-path=/var/run/nginx.pid \ 
+ --lock-path=/var/lock/nginx \ 
+ --with-http_stub_status_module \ 
+ --with-http_ssl_module \ 
+ --with-http_gzip_static_module \ 
+ --with-pcre 
+ --add-module=/path/to/nginx-module-vts
+
+#以下是完整复制
+./configure --group=nginx --user=nginx --prefix=/usr/local/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/tmp/nginx/client_body --http-proxy-temp-path=/tmp/nginx/proxy --http-fastcgi-temp-path=/tmp/nginx/fastcgi --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_gzip_static_module --with-pcre --add-module=/path/to/nginx-module-vts
+
+make && make install
+nginx编译完成后，按照原来的配置文件运行，但是为了支持vts功能，需要再配置文件中作一些小的修改。
+
+在http{}部分增加”vhost_traffic_status_zone;”
+在server{}部分增加”location /status {…}”内容
+修改完成后如下所示：
+
+...
+http {
+    ...
+    vhost_traffic_status_zone;
+    server {
+        ...
+        location /status {
+            vhost_traffic_status_display; 
+            vhost_traffic_status_display_format html; 
+        }
+    }
+}
+具体的说明文档在：https://github.com/vozlt/nginx-module-vts/blob/master/README.md。
+
+其他配置不变。如:
+
+useradd -r  www -s /bin/false -M
+mkdir -p /tmp/nginx/client_body
+启动nginx
+
+nginx -c /etc/nginx/nginx.conf
+部署nginx-exporter有两种形式：nginx所在宿主机部署、openshift部署（Deprecated）。
+
+下载安装包
+https://github.com/hnlq715/nginx-vts-exporter/releases/download/v0.9.1/nginx-vts-exporter-0.9.1.linux-amd64.tar.gz
+
+或者直接去http://10.122.16.41/cii-4/openshift/tree/master/accessory/chapter07/nginx-vts-exporter-0.9.1.linux-amd64.tar.gz下载。
+
+将压缩包拷贝到任意nginx节点所在机器上并解压到目录/opt下
+
+mkdir -p /opt/nginx-vts-exporter-0.9.1.linux-amd64
+tar -zxvf nginx-vts-exporter-0.9.1.linux-amd64.tar.gz -C /opt
+制作启动脚本
+在/opt/nginx-vts-exporter-0.9.1.linux-amd64下添加start.sh文件，内容如下：
+
+#!/bin/bash
+nohup /opt/nginx-vts-exporter-0.9.1.linux-amd64/nginx-vts-exporter -nginx.scrape_uri=http://localhost/status/format/json &
+执行/opt/nginx-vts-exporter-0.9.1.linux-amd64/start.sh启动。
+
+验证
+浏览器输入http://${node-ip}:9913/metrics 查看是否有指标数据返回。如有则表示安装成功，否则失败。
