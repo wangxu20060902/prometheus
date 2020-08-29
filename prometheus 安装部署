@@ -34,8 +34,36 @@ cat > /usr/lib/systemd/system/prometheus.service <<OEF
 > [Install]
 > WantedBy=multi-user.target
 > OEF
+或者
+vim /usr/lib/systemd/system/prometheus.service 
+添加如下内容
+[Unit]
+Description=prometheus-server
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
+ 
+[Service]
+User=root   
+Group=root  
+Type=simple 
+ExecStart=/usr/local/prometheus/prometheus --config.file=/usr/local/prometheus/prometheus.yml --storage.tsdb.path=/usr/local/prometheus/data --storage.tsdb.retention.time=7d --web.console.templates=/usr/local/prometheus/consoles --web.console.libraries=/user/local/prometheus/console_libraries --web.external-url=http://192.168.140.137:9090 --web.listen-address=0.0.0.0:9090 --web.max-connections=512 --web.enable-lifecycle --web.read-timeout=3m --query.max-concurrency=25 --query.timeout=2m 
+#ExecReload=/bin/kill -s HUP 
+#ExecStop=/bin/kill -s TERM 
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
 
 systemctl daemon-reload && systemctl start prometheus.service
+注：
+ExecStart=/usr/local/prometheus/prometheus \  ##启动prometheus成熟所在的路径
+--config.file=/usr/local/prometheus/conf/prometheus.yml \  ##指定prometheus 配置文件的路径
+--storage.tsdb.path=/usr/local/prometheus/data \    ##指定监控数据存储路径
+--storage.tsdb.retention.time=7d \  ##历史数据最大保留时间 默认15天
+--web.console.templates=/usr/local/prometheus/consoles \ ##控制台模板目录路径
+--web.console.libraries=/user/local/prometheus/console_libraries \  ##指定控制库目录路径
+--web.external-url=http://192.168.24.17:9090  ##用于生成prometheus的相对和绝对链接地址，prometheus web url 格式 http://ip:9090
+--web.listen-address=0.0.0.0:9090  ##prometheus 默认监控端口
+--web.max-connections=512 \   ##设置最大同时连接数
 
 这样就启动了撒，去访问 9090 端口就可以看到页面了，这个页面能看到的东西很多，自己点点看吧，能看到这个页面就表示莫得问题
 
