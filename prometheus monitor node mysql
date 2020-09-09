@@ -99,3 +99,4 @@ systemctl start mysqld_exporter.service
 
 验证是否采集到的信息
 curl 192.168.22.22:9104
+grafana 地址：https://grafana.com/grafana/dashboards/7362
