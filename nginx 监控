@@ -1,0 +1,89 @@
+配置nginx-module-vts模块
+收集nginx指标的较多采用的有nginx-vts模块，prometheus-lua两种方式进行采集，本文采用nginx-vts模块方式进行数据收集。
+
+查看是否安装了nginx-vts模块
+/usr/local/nginx/sbin/nginx -V
+nginx version: nginx/nginx-1.18.0
+...
+configure arguments: --prefix=/usr/local/nginx --user=nginx --group=nginx --with-stream --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module	
+
+安装nginx-vts模块
+cd /opt/
+git clone https://github.com/vozlt/nginx-module-vts 
+
+cd /opt/nginx-1.18.0
+./configure --add-module=/opt/nginx-module-vts \
+--error-log-path=/var/log/nginx/error.log \
+--http-log-path=/var/log/nginx/access.log \
+--prefix=/usr/local/nginx  \
+--with-stream \
+--with-http_ssl_module \
+--with-http_stub_status_module \
+--with-http_realip_module \
+
+make && make install 
+
+
+ 使用新编译的nginx执行文件替换掉旧的
+mv /usr/local/nginx/sbin/nginx  /usr/local/nginx/sbin/nginx.bak.20191211
+cp objs/nginx  /usr/local/nginx/sbin/
+
+# 生成新的nginx.pid文件
+kill -USR2 `cat  /usr/local/nginx/logs/nginx.pid`
+
+# 退出旧版本低nginx
+/usr/local/nginx/sbin/nginx.bak.20191211 -s stop
+
+# 查看最新的编译参数
+/usr/local/nginx/sbin/nginx -V
+nginx version: nginx/nginx-1.18.0
+...
+configure arguments: --add-module=/root/nginx-module-vts --prefix=/usr/local/nginx  --with-stream --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module
+
+添加nginx配置文件,暴露监控指标
+
+vim /usr/local/nginx/conf/nginx.conf
+
+http {
+    ...
+    vhost_traffic_status_zone;
+    ...
+	server {        
+       listen 8088;
+    
+       location /status {
+           vhost_traffic_status_display;
+           vhost_traffic_status_display_format html;
+       } 
+    }	
+}
+
+systemctl restart nginx.service
+cd /opt/
+wget https://github.com/hnlq715/nginx-vts-exporter/releases/download/v0.10.3/nginx-vts-exporter-0.10.3.linux-amd64.tar.gz
+tar zxvf nginx-vts-exporter-0.10.3.linux-amd64.tar.gz -C /usr/local/
+cd /usr/local/ && mv nginx-vts-exporter-0.10.3.linux-amd64 nginx-vts-exporter
+vim /usr/lib/systemd/system/nginx-vts-exporter.service 
+
+[Unit]
+Description=Prometheus Nginx VTS Exporter
+After=network.target 
+   
+[Service] 
+Type=simple
+Restart=always
+ExecStart=/usr/local/nginx-vts-exporter/nginx-vts-exporter \
+-nginx.scrape_uri http://localhost/status/format/json
+ 
+[Install] 
+WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl start nginx-vts-exporter.service
+
+preometheus配置：
+  - job_name: 'local_nginx_9913'
+    static_configs:
+    - targets: ['192.168.140.136:9913']
+	
+grafana 地址：https://grafana.com/grafana/dashboards/2949
