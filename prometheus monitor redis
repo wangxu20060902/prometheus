@@ -1,0 +1,33 @@
+prometheus monitor redis
+
+redis 安装完毕
+下载redis_exporter
+wget https://github.com/oliver006/redis_exporter/releases/download/v1.11.1/redis_exporter-v1.11.1.linux-amd64.tar.gz
+tar zxvf redis_exporter-v1.11.1.linux-amd64.tar.gz -C /usr/local/ && cd /usr/local/ && mv redis_exporter-v1.11.1.linux-amd64 redis_exporter
+
+配置开机启动项
+[Unit]
+
+Description=Prometheus Redis Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/redis_exporter/redis_exporter \
+-redis.addr 127.0.0.1:6379 \
+-redis.password abc123 \
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload 
+systemctl start redis_exporter.service 
+
+配置prometheus
+
+  - job_name: 'local_redis_9121'
+    static_configs:
+    - targets: ['192.168.140.136:9121']
+
+grafana 配置模板：https://grafana.com/grafana/dashboards/11835
