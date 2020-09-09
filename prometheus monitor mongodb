@@ -1,0 +1,108 @@
+MongoDB分片监控
+对于MongoDB分片集群，需要监控mongos, config server和各个分片。我们需要为mongos， config server和每个分片启动一个mongodb_exporter进程。
+
+以avacar lab环境的mongodb监控为例。以下是服务器规划
+
+
+
+根据上面的规划，我们需要创建5个mongodb_exporter进程。
+
+exporter部署
+mongos、config server和分片的exporter都是一个介质。只是监控的目标不同。
+
+介质地址：https://github.com/percona/mongodb_exporter
+
+mongos
+确定mongos进程所在ip为10.122.70.162，10.122.70.42，10.122.70.87
+
+选定10.122.70.162部署mongos的exporter
+
+将mongodb_exporter copy至10.122.70.162下的/opt/mongodb_exporter目录下。然后执行以下命令
+
+chmod +x /opt/mongodb_exporter/mongodb_exporter
+cat > /opt/mongodb_exporter/start.sh <<'EOF'
+#!/bin/bash
+
+export MONGODB_URL=mongodb://10.122.70.162:20000,10.122.70.42:20000,10.122.70.87:20000
+
+nohup /opt/mongodb_exporter/mongodb_exporter -web.listen-address=10.122.70.162:9001 &
+EOF
+chmod +x /opt/mongodb_exporter/start.sh
+./start.sh
+注：-web.listen-address中的ip地址为exporter进程所在机器的IP
+
+config server
+确定mongos进程所在ip为10.122.70.162，10.122.70.42，10.122.70.87
+
+选定10.122.70.42部署config server的exporter。不与其他monogdb_exporter实例在一台机器上
+
+将mongodb_exporter copy至10.122.70.42下的/opt/mongodb_exporter目录下。然后执行以下命令
+
+chmod +x /opt/mongodb_exporter/mongodb_exporter
+cat > /opt/mongodb_exporter/start.sh <<'EOF'
+#!/bin/bash
+
+export MONGODB_URL=mongodb://10.122.70.162:21000,10.122.70.42:21000,10.122.70.87:21000
+
+nohup /opt/mongodb_exporter/mongodb_exporter -web.listen-address=10.122.70.42:9001 &
+EOF
+chmod +x /opt/mongodb_exporter/start.sh
+./start.sh
+注：-web.listen-address中的ip地址为exporter进程所在机器的IP
+
+shard1
+确定shard1进程所在ip为10.122.70.162，10.122.70.87，10.122.70.158，10.122.70.207，10.122.70.147。
+
+选定10.122.70.158部署shard1的exporter。不与其他monogdb_exporter实例在一台机器上
+
+将mongodb_exporter copy至10.122.70.158下的/opt/mongodb_exporter目录下。然后执行以下命令
+
+chmod +x /opt/mongodb_exporter/mongodb_exporter
+cat > /opt/mongodb_exporter/start.sh <<'EOF'
+#!/bin/bash
+
+export MONGODB_URL=mongodb://10.122.70.162:27001,10.122.70.87:27001,10.122.70.158:27001,10.122.70.207:27001,10.122.70.147:27001
+
+nohup /opt/mongodb_exporter/mongodb_exporter -web.listen-address=10.122.70.158:9001 &
+EOF
+chmod +x /opt/mongodb_exporter/start.sh
+./start.sh
+注：-web.listen-address中的ip地址为exporter进程所在机器的IP
+
+shard2
+确定shard2进程所在ip为10.122.70.162，10.122.70.42，10.122.70.158，10.122.70.207，10.122.70.147。
+
+选定10.122.70.207部署shard2的exporter。不与其他monogdb_exporter实例在一台机器上
+
+将mongodb_exporter copy至10.122.70.207下的/opt/mongodb_exporter目录下。然后执行以下命令
+
+chmod +x /opt/mongodb_exporter/mongodb_exporter
+cat > /opt/mongodb_exporter/start.sh <<'EOF'
+#!/bin/bash
+
+export MONGODB_URL=mongodb://10.122.70.162:27002,10.122.70.42:27002,10.122.70.158:27002,10.122.70.207:27002,10.122.70.147:27002
+
+nohup /opt/mongodb_exporter/mongodb_exporter -web.listen-address=10.122.70.207:9001 &
+EOF
+chmod +x /opt/mongodb_exporter/start.sh
+./start.sh
+注：-web.listen-address中的ip地址为exporter进程所在机器的IP
+
+shard3
+确定shard3进程所在ip为10.122.70.42，10.122.70.87，10.122.70.158，10.122.70.207，10.122.70.147。
+
+选定10.122.70.147部署shard3的exporter。不与其他monogdb_exporter实例在一台机器上
+
+将mongodb_exporter copy至10.122.70.147下的/opt/mongodb_exporter目录下。然后执行以下命令
+
+chmod +x /opt/mongodb_exporter/mongodb_exporter
+cat > /opt/mongodb_exporter/start.sh <<'EOF'
+#!/bin/bash
+
+export MONGODB_URL=mongodb://10.122.70.42:27003,10.122.70.87:27003,10.122.70.158:27003,10.122.70.207:27003,10.122.70.147:27003
+
+nohup /opt/mongodb_exporter/mongodb_exporter -web.listen-address=10.122.70.207:9001 &
+EOF
+chmod +x /opt/mongodb_exporter/start.sh
+./start.sh
+grafana 地址：https://grafana.com/grafana/dashboards/7347
