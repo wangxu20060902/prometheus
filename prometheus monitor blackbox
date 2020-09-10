@@ -1,0 +1,97 @@
+prometheus monitor blackbox  参考：https://blog.csdn.net/qq_25934401/article/details/84325356
+下载
+wget https://github.com/prometheus/blackbox_exporter/releases/download/v0.17.0/blackbox_exporter-0.17.0.linux-amd64.tar.gz
+
+tar zxvf blackbox_exporter-0.17.0.linux-amd64.tar.gz -C /usr/local/ && cd /usr/local/ && mv blackbox_exporter-0.17.0.linux-amd64  blackbox_exporter
+
+vim /usr/lib/systemd/system/blackbox_exporter.service 
+
+[Unit]
+Description=blackbox_exporter
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/blackbox_exporter/blackbox_exporter \
+          --config.file "/usr/local/blackbox_exporter/blackbox.yml" \
+          --web.listen-address ":9115" \
+
+[Install]
+WantedBy=multi-user.target
+
+
+systemctl daemon-reload 
+systemctl start blackbox_exporter.service 
+systemctl status blackbox_exporter.service
+
+可以登录到：http://192.168.140.136:9115 控制台查看测试
+vim blackbox.yaml
+
+modules:
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: "ip4" ##如果http监测是使用ipv4 就要写上，目前国内使用ipv6很少。
+  http_post_2xx_query: ##用于post请求使用的模块）由于每个接口传参不同 可以定义多个module 用于不同接口（例如此命名为http_post_2xx_query 用于监测query.action接口 
+    prober: http
+    timeout: 15s
+    http:
+      preferred_ip_protocol: "ip4" ##使用ipv4
+      method: POST
+      headers:
+        Content-Type: application/json ##header头
+      body: '{"hmac":"","params":{"publicFundsKeyWords":"xxx"}}' ##传参
+  tcp_connect:
+    prober: tcp
+  pop3s_banner:
+    prober: tcp
+    tcp:
+      query_response:
+      - expect: "^+OK"
+      tls: true
+      tls_config:
+        insecure_skip_verify: false
+  ssh_banner:
+    prober: tcp
+    tcp:
+      query_response:
+      - expect: "^SSH-2.0-"
+  irc_banner:
+    prober: tcp
+    tcp:
+      query_response:
+      - send: "NICK prober"
+      - send: "USER prober prober prober :prober"
+      - expect: "PING :([^ ]+)"
+        send: "PONG ${1}"
+      - expect: "^:[^ ]+ 001"
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+	  preferred_ip_protocol: "ip4" 
+	  
+systemctl restart blackbox_exporter.service
+
+vim /usr/local/prometheus/prometheus.yaml
+
+  - job_name: black_exporter
+    metrics_path: /probe
+    params:
+      modules: [http_2xx_check]
+    static_configs:
+      - targets:
+        - https://www.baidu.com/
+        - https://www.163.com/
+        - 192.168.140.136:9115
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.140.136:9115 
+
+systemctl restart prometheus
