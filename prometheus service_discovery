@@ -1,0 +1,58 @@
+#prometheus 服务发现 service_dsicovery
+
+  - job_name: 'node_exporter'
+    file_sd_configs:
+      - files:
+        - targets/*.json
+        refresh_interval: 1m
+
+cat >>targets/node.json <<eof
+		
+[{
+  "targets": [
+    "192.168.140.136:9100",
+    "10.122.72.52:9100",
+    "10.122.72.66:9100",
+    "10.122.72.130:9100",
+    "192.168.140.136:9100"
+  ],
+  "labels": {
+    "env":"test"
+  }
+}]
+eof
+
+  - job_name: 'meddleware_exporter'
+    file_sd_configs:
+      - files:
+        - targets/middleware.json
+        refresh_interval: 1m
+		
+cat >>targets/middleware.json <<eof
+[
+  {
+    "targets": [ "192.168.140.136:9104" ],
+    "labels": {
+      "env": "test",
+      "job": "meddleware_exporter",
+      "MD_name": "mysql"
+    }
+  },
+  {
+    "targets": [ "192.168.140.136:9121" ],
+    "labels": {
+      "env": "test",
+      "job": "meddleware_exporter",
+      "MD_name": "redis"
+    }
+  },
+  {
+    "targets": [ "192.168.140.136:9913" ],
+    "labels": {
+      "env": "test",
+      "job": "meddleware_exporter",
+      "MD_name": "redis"
+    }
+  }
+]
+eof
