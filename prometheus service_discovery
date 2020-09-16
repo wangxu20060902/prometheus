@@ -1,4 +1,4 @@
-#prometheus 服务发现 service_dsicovery
+#prometheus 服务发现 service_dsicovery 之file_sd_configs:
 
   - job_name: 'node_exporter'
     file_sd_configs:
@@ -56,7 +56,7 @@ cat >>targets/middleware.json <<eof
   }
 ]
 eof
-##prometheus consul_discovery
+##prometheus service_discovery 之consul
 #部署consul server1
 docker run --name consul1 -d -p 8500:8500 -p 8300:8300 -p 8301:8301 -p 8302:8302 -p 8600:8600 consul agent -server -bootstrap-expect 2 -ui -bind=0.0.0.0 -client=0 .0.0.0
 #查看consul1 的容器ip地址
