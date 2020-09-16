@@ -56,3 +56,30 @@ cat >>targets/middleware.json <<eof
   }
 ]
 eof
+##prometheus consul_discovery
+#部署consul server1
+docker run --name consul1 -d -p 8500:8500 -p 8300:8300 -p 8301:8301 -p 8302:8302 -p 8600:8600 consul agent -server -bootstrap-expect 2 -ui -bind=0.0.0.0 -client=0 .0.0.0
+#查看consul1 的容器ip地址
+docker inspect --format='{{.NetworkSettings.IPAddress}}' consul1
+#部署consul2 并加入集群
+docker run --name consul2 -d -p 8501:8500 consul agent -server -ui -bind=0.0.0.0 -client=0.0.0.0 -join 172.17.0.2
+#部署consul3 并加入集群
+docker run --name consul3 -d -p 8502:8500 consul agent -server -ui -bind=0.0.0.0 -client=0.0.0.0 -join 172.17.0.2
+#查看集群装状态
+docker exec -it consul1 consul members
+##注册两台服务器
+curl -X PUT -d '{"id": "192.168.140.136:9100","name": "node_exporter","address": "192.168.140.136","port": 9100,"tags": ["node_exporter"],"checks": [{"http": "http://192.168.140.136:9100/metrics", "interval": "5s"}]}'  http://192.168.140.138:8500/v1/agent/service/register
+curl -X PUT -d '{"id": "192.168.140.136:9104","name": "mysql_exporter","address": "192.168.140.136","port": 9104,"tags": ["mysql_exporter"],"checks": [{"http": "http://192.168.140.136:9104/metrics", "interval": "5s"}]}'  http://192.168.140.138:8500/v1/agent/service/register
+#删除注册的信息
+curl -X PUT  http://192.168.140.138:8500/v1/agent/service/deregister/192.168.140.138:9100
+curl -X PUT  http://192.168.140.138:8500/v1/agent/service/deregister/192.168.140.138:9104
+
+prometheus 中配置：
+
+
+  - job_name: 'consul-prometheus'
+    consul_sd_configs:
+    - server: '192.168.140.138:8500'
+      services: ["node_exporter","mysql_exporter"] 
+     
+     systemctl restart prometheus
