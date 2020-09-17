@@ -80,6 +80,13 @@ prometheus 中配置：
   - job_name: 'consul-prometheus'
     consul_sd_configs:
     - server: '192.168.140.138:8500'
-      services: ["node_exporter","mysql_exporter"] 
+      services: ["node_exporter","mysql_exporter"]
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*,.*exporter,.*
+        action: keep
+      - source_labels: [__meta_consul_service]
+        target_label: service_tag	  
+
      
      systemctl restart prometheus
