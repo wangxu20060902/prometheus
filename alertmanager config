@@ -1,0 +1,188 @@
+alertmanager 部署配置  https://blog.csdn.net/qq_31547771/article/details/103433737
+
+###################下载 alertmanager#########################
+wget https://github.com/prometheus/alertmanager/releases/download/v0.21.0/alertmanager-0.21.0.linux-amd64.tar.gz
+
+tar zxvf alertmanager-0.21.0.linux-amd64.tar.gz -C /usr/local
+
+cd /usr/local && mv alertmanager-0.21.0.linux-amd64  alertmanager
+
+###############配置altermanager 启动服务
+
+[Unit]
+Description=Alertmanager
+After=network.target
+
+[Service]
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/alertmanager/alertmanager \
+          --config.file "/usr/local/alertmanager/alertmanager.yml" \
+          --storage.path="/usr/local/alertmanager/data" \
+          --data.retention=120h \
+          --web.external-url "http://192.168.140.138:9093" 
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+systemctl start alertmanager.service
+systemctl stop alertmanager.service
+systemctl status alertmanager.service
+systemctl enable alertmanager.service
+
+##########编辑alertmanager配置文件#######################################
+ 
+vim alertmanager.yaml
+global:
+  resolve_timeout: 5m           ###处理超时时间，默认为5min
+  smtp_from: 'wangxu20060902@163.com'  ###邮件发送地址
+  smtp_smarthost: 'smtp.163.com:25'    ###邮箱SMTP服务器地址 和 端口号
+  smtp_auth_username: 'wangxu20060902@163.com'   ###邮箱用户名称
+  smtp_auth_password: 'BXHVNSXHNRKNIOAJ'    ###邮箱授权密码
+  smtp_require_tls: false      ####同时也可以使用smtp_require_tls来设置TLS协议使用情况，如果使用TLS则设置为true且为默认值，如果不使用则设置为fasle
+  smtp_hello: '163.com'        ###
+route:       ##配置路由信息
+  group_by: ['alertname', 'cluster']   #### 这里的标签列表是接收到报警信息后的重新分组标签，例如，接收到的报警信息里面有许多具有 cluster=A 和 alertname=LatncyHigh 这样的标签的报警信息将会批量被聚合到一个分组里面
+  group_wait: 5s    ### 当一个新的报警分组被创建后，需要等待至少group_wait时间来初始化通知，这种方式可以确保您能有足够的时间为同一分组来获取多个警报，然后一起触发这个报警信息。
+  group_interval: 5s   ### 当第一个报警发送后，等待'group_interval'时间来发送新的一组报警信息。
+  repeat_interval: 5m  ### 当第一个报警发送后，等待'group_interval'时间来发送新的一组报警信息。
+  receiver: 'email'    ### 默认的receiver：如果一个报警没有被一个route匹配，则发送给默认的接收器
+#### 上面所有的属性都由所有子路由继承，并且可以在每个子路由上进行覆盖。
+receivers:       ###配置接收器
+- name: 'email'    ###接收器名称
+  email_configs:   
+  - to: 'wangxu20060902@163.com, xu.m.wang@futuremove.cn'      ###收件人
+    send_resolved: true       ##是否
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']
+	
+####################prometheus  配置添加告警项目#############################
+################添加告警配置########################
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - 192.168.140.138:9093
+
+################配置rules#########################
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+  - "/usr/local/prometheus/rules/*.yaml"
+
+################编辑rules###############
+###vim /usr/local/prometheus/rules/node.yaml
+
+groups:
+- name: exports.rules     ##定义这组告警的组名，同性质的，都是监控实例exports是否开启的模板
+  rules:
+
+  - alert: 采集器凉了     ## 告警名称
+    expr: up == 0        ## 告警表达式，监控up指标，如果等于0就进行下面的操作
+    for: 1m              ## 持续一分钟为0进行告警
+    labels:              ## 定义告警级别
+      severity: ERROR
+    annotations:         ## 定义了告警通知怎么写，默认调用了{$labels.instance&$labels.job}的值
+      summary: "实例 {{ $labels.instance }} 采集器凉了撒"
+      description: "实例 {{ $labels.instance }} job 名为 {{ $labels.job }} 的采集器凉了有一分钟了撒"
+- name: mysql_rule
+  rules:
+  - alert: mysql down 赶快去看看吧
+    expr: mysql_up == 0
+    for: 1m
+    lables:
+      severity: ERROR
+    annotations:
+      summary: "实例 {{ $labels.instance }} mysql凉了撒"
+      description: "实例 {{ $labels.instance }} job 名为 {{ $labels.job }} 的mysql凉了有一分钟了撒"
+
+systemctl restart prometheus
+systemctl restart alertmanager
+#########################################################################
+
+#####################企业微信号ifo########################
+注册企业微信号添加并记录一下信息
+AgentId
+1000002
+Secret
+BFDX8yCYu9kIYbbw6mXlnFQRwQ0aQpiM-kGisRL3Orw
+可见范围
+王旭
+部门ID: 1
+创建时间
+2020年9月21日
+企业ID
+ww4e4ed88e9b78bf1f
+账号：WangXu
+
+################配置企业微信告警###########################
+
+vim alertmanager.yaml
+global:
+  resolve_timeout: 5m
+templates:
+  - "/usr/local/alertmanager/wechat.tmpl"   ###配置微信邮件使用模板
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 6m
+  receiver: default
+receivers:
+- name: 'default'
+  email_configs:
+  - to: 'wangxu20060902@163.com, xu.m.wang@futuremove.cn'
+    send_resolved: true
+    from: 'wangxu20060902@163.com'
+    smarthost:  'smtp.163.com:25'
+    auth_username: 'wangxu20060902@163.com'
+    auth_password: 'BXHVNSXHNRKNIOAJ'
+  wechat_configs:
+  - corp_id: 'ww4e4ed88e9b78bf1f'
+    to_party: '1' 
+    agent_id: '1000002'
+    api_secret: 'BFDX8yCYu9kIYbbw6mXlnFQRwQ0aQpiM-kGisRL3Orw'
+    message: '{{ template "wechat.html" .}}'
+    to_user: 'WangXu'
+    send_resolved: true
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']
+
+#######企业微信模板####################
+
+cat > /usr/local/alertmanager/wechat.tmpl << EOF
+{{ define "wechat.html" }}
+{{ range .Alerts }}
+======== 阿里云报警 ==========
+***请注意告警状态: {{   .Status }}
+告警级别: {{ .Labels.severity }}
+告警类型: {{ .Labels.alertname }}
+故障主机: {{ .Labels.instance }}
+告警主题: {{ .Annotations.summary }}
+告警详情: {{ .Annotations.description }}
+触发时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+========end==========
+{{ end }}
+{{ end }}
+EOF
+
+########测试企业微信是否可用####################
+wget https://raw.githubusercontent.com/OneOaas/weixin-alert/master/weixin_linux_amd64
+
+chmod 755 weixin_linux_amd64
+./weixin_linux_amd64 -corpid=ww4e4ed88e9b78bf1f \
+   -corpsecret=BFDX8yCYu9kIYbbw6mXlnFQRwQ0aQpiM-kGisRL3Orw \
+   -msg="hello this is test message" \
+   -user='WangXu' \
+   -agentid=1000002
+#####################################
