@@ -33,3 +33,31 @@ systemctl start redis_exporter.service
     - targets: ['192.168.140.136:9121']
 
 grafana 配置模板：https://grafana.com/grafana/dashboards/11835
+
+###########prometheus monitor redis########
+
+wget https://github.com/leominov/redis_sentinel_exporter/releases/download/v1.6.0/redis_sentinel_exporter-1.6.0.linux-amd64.tar.gz
+
+tar zxvf redis_sentinel_exporter-1.6.0.linux-amd64.tar.gz && mv redis_sentinel_exporter-1.6.0.linux-amd64/ redis_sentinel_exporter
+
+vim /usr/lib/systemd/system/redis_sentinel_exporter.service
+
+[Unit]
+
+Description=Prometheus Redis Sentinel Exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/redis_sentinel_exporter/redis_sentinel_exporter \
+-sentinel.addr 127.0.0.1:26379 \
+-sentinel.password abc123 \
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+
+systemctl daemon-reload && systemctl start redis_sentinel_exporter.service && systemctl enable redis_sentinel_exporter.service
+
+##dashboard:  https://grafana.com/grafana/dashboards/9570
