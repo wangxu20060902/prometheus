@@ -1,0 +1,25 @@
+#zookeeper_exporter 下载
+
+wget https://github.com/carlpett/zookeeper_exporter/releases/download/v1.0.2/zookeeper_exporter
+
+chmod +x zookeeper_exporter
+
+mv zookeeper_exporter /usr/local/zookeeper_exporter
+
+###设置服务开机启动
+vim /usr/lib/systemd/system/zookeeper_exporter.service
+
+[Unit]
+Description=zook_exporter
+Documentation=https://github.com/carlpett/zookeeper_exporter
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/local/zookeeper_exporter/zookeeper_exporter -zookeeper "192.168.140.138:2181"
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl start zookeeper_exporter.service
+systemctl enable zookeeper_exporter.service
