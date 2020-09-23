@@ -186,3 +186,67 @@ chmod 755 weixin_linux_amd64
    -user='WangXu' \
    -agentid=1000002
 #####################################
+
+###########配置钉钉告警####################
+首先创建钉钉机器人，钉钉告警需要prometheus-webhook-dingtalk插件做支持
+wget https://github.com/timonwong/prometheus-webhook-dingtalk/releases/download/v1.4.0/prometheus-webhook-dingtalk-1.4.0.linux-amd64.tar.gz
+tar zxvf prometheus-webhook-dingtalk-1.4.0.linux-amd64.tar.gz -C /usr/local  && cd /user/local/ && mv prometheus-webhook-dingtalk-1.4.0.linux-amd64 dingtalk
+ln -sv /usr/local/dingtalk/prometheus-webhook-dingtalk /usr/local/sbin/
+
+钉钉webhook:
+Webhook：https://oapi.dingtalk.com/robot/send?access_token=4518e6dfa1655e0c06f528b1c16d62acdc66f7cbbd0919d1ba1e5e9320245555
+启动脚本 cat  >>/usr/local/dingtalk/dingtalk_start.sh  <<EOF
+#!/bin/bash
+cd /usr/local/dingtalk
+kill -9 `ps -ef | grep prometheus-webhook-dingtalk | grep -v grep | awk '{print $2}'`
+nohup ./prometheus-webhook-dingtalk \
+      --ding.profile="ops_dingding=https://oapi.dingtalk.com/robot/send?access_token=4518e6dfa1655e0c06f528b1c16d62acdc66f7cbbd0919d1ba1e5e9320245555" >> start_dingding.log &
+EOF
+chmod 755 /usr/local/dingtalk/dingtalk_start.sh 
+sh /usr/local/dingtalk/dingtalk_start.sh 
+tail -f /usr/local/dingtalk/start_dingding.log
+找到urls=http://localhost:8060/dingtalk/ops_dingding/send 供后面配置alertmanager.yml使用
+注意项： 注意在创建钉钉机器人的时候IP地址一定要写公网ip地址
+
+###########配置告警##################
+
+vim alermanager.yml
+global:
+  resolve_timeout: 5m
+templates:
+  - "/usr/local/alertmanager/wechat.tmpl"
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 6m
+  receiver: default
+receivers:
+- name: 'default'
+  email_configs:
+  - to: 'wangxu20060902@163.com, xu.m.wang@futuremove.cn'
+    send_resolved: true
+    from: 'wangxu20060902@163.com'
+    smarthost:  'smtp.163.com:25'
+    auth_username: 'wangxu20060902@163.com'
+    auth_password: 'BXHVNSXHNRKNIOAJ'
+  wechat_configs: 
+  - corp_id: 'ww4e4ed88e9b78bf1f' 
+    to_party: '1'
+    agent_id: '1000002'
+    api_secret: 'BFDX8yCYu9kIYbbw6mXlnFQRwQ0aQpiM-kGisRL3Orw'
+    message: '{{ template "wechat.html" .}}'
+    to_user: 'WangXu'
+    send_resolved: true 
+  webhook_configs:
+  - url: 'http://localhost:8060/dingtalk/ops_dingding/send'
+    send_resolved: true 
+inhibit_rules: 
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']
+
+
+systemctl restart alermanager.servie
