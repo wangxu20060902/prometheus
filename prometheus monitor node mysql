@@ -38,6 +38,10 @@ systemctl start node_exporter.service
 
 验证是否采集到的信息
 curl 192.168.22.22:9100
+dashboard url: 
+https://grafana.com/grafana/dashboards/8919
+https://grafana.com/grafana/dashboards/1860
+https://grafana.com/grafana/dashboards/405
 
 mysql exporter 部署
 
@@ -99,4 +103,6 @@ systemctl start mysqld_exporter.service
 
 验证是否采集到的信息
 curl 192.168.22.22:9104
-grafana 地址：https://grafana.com/grafana/dashboards/7362
+grafana 地址：
+https://grafana.com/grafana/dashboards/7362
+https://grafana.com/grafana/dashboards/7365
