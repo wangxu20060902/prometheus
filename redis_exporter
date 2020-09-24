@@ -61,3 +61,4 @@ WantedBy=multi-user.target
 systemctl daemon-reload && systemctl start redis_sentinel_exporter.service && systemctl enable redis_sentinel_exporter.service
 
 ##dashboard:  https://grafana.com/grafana/dashboards/9570
+              https://grafana.com/grafana/dashboards/763
