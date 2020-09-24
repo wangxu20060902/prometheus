@@ -195,6 +195,21 @@ ln -sv /usr/local/dingtalk/prometheus-webhook-dingtalk /usr/local/sbin/
 
 钉钉webhook:
 Webhook：https://oapi.dingtalk.com/robot/send?access_token=4518e6dfa1655e0c06f528b1c16d62acdc66f7cbbd0919d1ba1e5e9320245555
+
+###配置dingtalk.service 开机启动
+cat >>/usr/lib/systemd/system/dingtalk.service <<EOF
+[Unit]
+Description=dingdingTalkAlert
+Documentation=https://github.com/timonwong/prometheus-webhook-dingtalk
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/local/dingtalk//prometheus-webhook-dingtalk --ding.profile="ops_dingding=https://oapi.dingtalk.com/robot/send?access_token=4518e6dfa1655e0c06f528b1c16d62acdc66f7cbbd0919d1ba1e5e9320245555"
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload && systemctl start dingtalk.service &&  systemctl enable dingtalk.service
 启动脚本 cat  >>/usr/local/dingtalk/dingtalk_start.sh  <<EOF
 #!/bin/bash
 cd /usr/local/dingtalk
