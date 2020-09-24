@@ -1,0 +1,38 @@
+################process-exporter 监控进程###################
+下载process_exporter
+wget https://github.com/ncabatoff/process-exporter/releases/download/v0.7.2/process-exporter-0.7.2.linux-amd64.tar.gz
+tar zxvf process-exporter-0.7.2.linux-amd64.tar.gz && cp -r process-exporter-0.7.2.linux-amd64 /usr/local/process-exporter
+cd /usr/local/process-exporter
+#配置要监控的进程
+cat >>process_config.yml <<EOF
+process_names:
+  - name: "{{.Comm}}"
+    cmdline:
+    - 'redis'
+  - name: "{{.Comm}}"
+    cmdline:
+    - 'mysql'
+EOF
+
+vim /usr/lib/systemd/system/process_exporter.service
+ 
+[Unit]
+Description=Prometheus exporter for processors metrics, written in Go with pluggable metric collectors.
+Documentation=https://github.com/ncabatoff/process-exporter
+After=network.target
+ 
+[Service]
+Type=simple
+User=prometheus
+WorkingDirectory=/usr/local/process-exporter
+ExecStart=/usr/local/process-exporter/process-exporter -config.path=/usr/local/process-exporter/process_config.yml
+Restart=on-failure
+ 
+[Install]
+WantedBy=multi-user.target
+
+###配置开机启动
+systemctl daemon-reload && systemctl start process_exporter.service && systemctl enable process_exporter.service
+
+测试curl localhost:9256/metrics    查看采集到的指标
+导入dashboard: https://grafana.com/grafana/dashboards/249
