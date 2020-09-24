@@ -95,3 +95,7 @@ vim /usr/local/prometheus/prometheus.yaml
         replacement: 192.168.140.136:9115 
 
 systemctl restart prometheus
+
+curl 192.168.140.136:9115/metrics
+grafana dashboard url:
+        https://grafana.com/grafana/dashboards/7587
