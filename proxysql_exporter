@@ -22,3 +22,5 @@ Restart=on-failure
 WantedBy=multi-user.target
 
 systemctl daemon-reload && systemctl start proxysql_exporter && systemctl status proxysql_exporter && systemctl enable proxysql_exporter
+
+dashboard json: https://github.com/percona/grafana-dashboards/blob/master/dashboards/ProxySQL_Overview.json
