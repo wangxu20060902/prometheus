@@ -1,0 +1,24 @@
+********************* proxysql_exporter ************************
+
+wget https://github.com/percona/proxysql_exporter/releases/download/v1.1.0/proxysql_exporter-1.1.0.linux-amd64.tar.gz
+
+tar zxvf /tmp/proxysql_exporter-1.1.0.linux-amd64.tar.gz -C /usr/local/
+
+cd /usr/local/ && mv proxysql_exporter-1.1.0.linux-amd64 proxysql_exporter 
+
+vi /usr/lib/systemd/system/proxysql_exporter.service
+
+[Unit]
+Description=proxysql_exporter
+After=network.target
+[Service]
+Type=simple
+User=root
+Environment=DATA_SOURCE_NAME=stats:stats@tcp(127.0.0.1:6032)/
+ExecStart=/usr/local/proxysql_exporter/proxysql_exporter \
+ -web.listen-address=:42004
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload && systemctl start proxysql_exporter && systemctl status proxysql_exporter && systemctl enable proxysql_exporter
