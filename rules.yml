@@ -1,0 +1,403 @@
+Rules
+###############cii-kafka-node.rules###################
+cii-kafka-node.rules
+
+alert: nodeDiskPressure
+expr: (((node_filesystem_size_bytes{device!~"tmpfs",mountpoint!="/boot",team="cii"}
+  - node_filesystem_avail_bytes{device!~"tmpfs",mountpoint!="/boot",team="cii"})
+  / node_filesystem_size_bytes{device!~"tmpfs",mountpoint!="/boot",team="cii"}))
+  > 0.8
+for: 5m
+labels:
+  severity: critical
+annotations:
+  description: openstack kafka disk usage {{ $labels.instance }} value {{ $value }}
+  summary: openstack kafka disk usage > 0.8
+
+###############cluster.rules####################
+cluster.rules
+
+alert: clusterNodeDown
+expr: up{cluster="prod-cluster.opsocp.csvw.com",job="kubelet"}
+  == 0
+for: 1m
+labels:
+  severity: critical
+annotations:
+  description: openstack mos prod cluster node {{ $labels.instance }} down
+  summary: openstack mos prod clusterNodeDown
+  
+####################gluster.rules#################
+
+
+alert: GlusterNotReady
+expr: gluster_up
+  == 0
+for: 1m
+labels:
+  severity: critical
+annotations:
+  description: Openstack Prod The gluster {{ $labels.instance }} is not ready.
+  summary: Openstack Prod Gluster Not Ready
+  
+alert: GlusterPeersUnhealth
+expr: gluster_peers_connected
+  < 2
+for: 1m
+labels:
+  severity: critical
+annotations:
+  description: Openstack Prod The gluster peers {{ $labels.instance }} is less than
+    2.
+  summary: Openstack Prod Gluster Peers Unhealth
+
+alert: GlusterBrickUnhealth
+expr: gluster_brick_count
+  < 3
+for: 1m
+labels:
+  severity: critical
+annotations:
+  description: Openstack Prod The gluster brick count of {{ $labels.instance }} {{
+    $labels.volume }} is less than 3.
+  summary: Openstack Prod Gluster Brick Unhealth
+
+alert: GlusterVolumeUsage
+expr: (gluster_node_size_total_bytes
+  - gluster_node_size_free_bytes) / gluster_node_size_total_bytes * 100 > 80
+for: 2m
+labels:
+  servrity: warning
+annotations:
+  description: Openstack Prod Gluster volume disk pressure {{ $labels.hostname }}/{{
+    $labels.volume }}
+  summary: Openstack Prod Gluster Volume Disk Pressure
+  
+##########################container.rules#########################
+container.rules
+
+alert: containerCpuPressure
+expr: sum
+  by(pod_name, container_name, namespace) (rate(container_cpu_usage_seconds_total{container_name!="POD",image!="",namespace=~"mos.*"}[2m]))
+  / sum by(pod_name, container_name, namespace) ((container_spec_cpu_quota / container_spec_cpu_period))
+  > 0.8
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack Container {{ $labels.namespace }}.{{ $labels.pod_name }}.{{
+    $labels.container_name }} cpu usage {{ $value }}
+  summary: openstack Container CPU usage > 0.8
+  
+alert: containerMemoryPressure
+expr: (avg
+  by(namespace, container_name, pod_name) (container_memory_rss{container_name!="POD",image!="",namespace=~"mos.*"}))
+  / (avg by(namespace, container_name, pod_name) (label_replace(label_replace(kube_pod_container_resource_limits_memory_bytes{namespace=~"mos.*"},
+  "container_name", "$1", "container", "(.*)"), "pod_name",
+  "$1", "pod", "(.*)"))) > 0.95
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack Container {{ $labels.namespace }}.{{ $labels.pod_name }}.{{
+    $labels.container_name }} memory usage {{ $value }}
+  summary: openstack Container CPU memory > 0.8
+  
+alert: containerRebootAlert
+expr: increase(kube_pod_container_status_restarts_total{namespace=~"mos.*"}[1h])
+  > 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack container reboot times {{ $labels.pod}} value {{ $value }}
+  summary: openstack container reboot times 1h > 1
+
+alert: containerStateAlert
+expr: kube_pod_container_status_terminated_reason{namespace=~"mos.*",pod!~".*-deploy",reason=~"Error|ContainerCannotRun|OOMKilled|ContainerCreating|ErrImagePull"}
+  > 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack containers not in running state {{ $labels.namespace }}.{{
+    $labels.pod }}.{{ $labels.container }}  value {{ $value }}
+  summary: openstack containers not in running state
+  
+####################exporter.rules#####################
+exporter.rules
+
+alert: expotersDown
+expr: up{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack expoter {{ $labels.instance }} down
+  summary: openstack expoterDown
+  
+######################middleware.rules###########################
+
+alert: mysqlDown
+expr: mysql_up{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack mysql {{ $labels.instance }} down
+  summary: openstack mysql Down
+  
+alert: mysqlSlaveIODown
+expr: mysql_slave_status_slave_io_running
+  != 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack mysqlSlaveIO {{ $labels.instance }} down
+  summary: openstack mysqlSlaveIO Down
+  
+alert: mysqlSlaveSqlDown
+expr: mysql_slave_status_slave_sql_running
+  != 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack mysqlSlaveSql {{ $labels.instance }} down
+  summary: openstack mysqlSlaveSql Down
+  
+alert: redisDown
+expr: redis_up{team="mos"}
+  != 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack redis {{ $labels.instance }} down
+  summary: openstack redis Down
+  
+alert: kafkaDown
+expr: up{service_tags="kafka",team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack kafka {{ $labels.instance }} down
+  summary: openstack kafka Down
+  
+alert: proxysqlDown
+expr: proxysql_up{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack proxysql {{ $labels.instance }} down
+  summary: openstack proxysql Down
+  
+alert: mongodbConfigDown
+expr: (mongodb_replset_member_health{team="mos"}
+  == 0) or (mongodb_mongod_replset_member_health{team="mos"} == 0)
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack mongodbConfigDown {{ $labels.instance }} down
+  summary: openstack mongodbConfigDown Down
+  
+alert: mongosDown
+expr: mongodb_mongos_sharding_mongos_uptime_seconds{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack mongosDown {{ $labels.instance }} down
+  summary: openstack mongosDown Down
+  
+alert: namedprocessAbnormal
+expr: namedprocess_namegroup_num_procs{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack namedprocessAbnormal {{ $labels.instance }} down
+  summary: openstack namedprocessAbnormal Down
+  
+alert: namedprocessTooMuch
+expr: process_open_fds{team="mos"}
+  / process_max_fds{team="mos"} > 0.8
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack namedprocessTooMuch {{ $labels.instance }} down
+  summary: openstack namedprocessTooMuch
+  
+alert: zkDown
+expr: zk_up{team="mos"}
+  != 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack zkDown {{ $labels.instance }} down
+  summary: openstack zkDown Down
+  
+
+alert: HaproxyDownWarning
+expr: haproxy_up{team="mos"}
+  == 0
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack HaproxyDown {{ $labels.instance }} Warning
+  summary: openstack HaproxyDown Warning
+alert: RedisStatusWarning
+expr: redis_master_link_up{team="mos"}
+  != 1 or redis_instance_info{role="slave",team="mos"} != 1
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack RedisStatus {{ $labels.instance }} Warning
+  summary: openstack RedisStatus Warning
+  
+alert: NetworkReceiveStatusWarning
+expr: ((rate(node_network_receive_bytes_total{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_receive_bytes_total{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) > 20 or (rate(node_network_receive_bytes{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_receive_bytes{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) > 20) or ((rate(node_network_receive_bytes_total{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_receive_bytes_total{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) < 0.05 or (rate(node_network_receive_bytes{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_receive_bytes{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) < 0.05)
+for: 10m
+labels:
+  severity: warning
+annotations:
+  description: openstack NetworkReceiveStatus {{ $labels.instance }} Warning
+  summary: openstack NetworkReceiveStatus Warning
+  
+
+alert: NetworkTransmitStatusWarning
+expr: ((rate(node_network_transmit_bytes_total{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_transmit_bytes_total{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) > 20 or (rate(node_network_transmit_bytes{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_transmit_bytes{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) > 20) or ((rate(node_network_transmit_bytes_total{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_transmit_bytes_total{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) < 0.05 or (rate(node_network_transmit_bytes{device="eth0",team="mos"}[10m])
+  * 8) / (rate(node_network_transmit_bytes{device="eth0",team="mos"}[10m]
+  offset 1w) * 8) < 0.05)
+for: 10m
+labels:
+  severity: warning
+annotations:
+  description: openstack NetworkTransmitStatus {{ $labels.instance }} Warning
+  summary: openstack NetworkTransmitStatus Warning
+  
+alert: ContainerReceiveStatusWarning
+expr: (rate(container_network_receive_bytes_total{namespace=~"mos4.*"}[5m])
+  / rate(container_network_receive_bytes_total{namespace=~"mos4.*"}[5m] offset
+  1w) > 20) or (rate(container_network_receive_bytes_total{namespace=~"mos4.*"}[5m])
+  / rate(container_network_receive_bytes_total{namespace=~"mos4.*"}[5m] offset
+  1w) < 0.05)
+for: 10m
+labels:
+  severity: warning
+annotations:
+  description: openstack ContainerReceiveStatus {{ $labels.instance }} Warning
+  summary: openstack ContainerReceiveStatus Warning
+  
+
+alert: ContainerTransmitStatusWarning
+expr: (rate(container_network_transmit_bytes_total{namespace=~"mos4.*"}[5m])
+  / rate(container_network_transmit_bytes_total{namespace=~"mos4.*"}[5m] offset
+  1w) > 20) or (rate(container_network_transmit_bytes_total{namespace=~"mos4.*"}[5m])
+  / rate(container_network_transmit_bytes_total{namespace=~"mos4.*"}[5m] offset
+  1w) < 0.05)
+for: 10m
+labels:
+  severity: warning
+annotations:
+  description: openstack ContainerTransmitStatus {{ $labels.instance }} Warning
+  summary: openstack ContainerTransmitStatus Warning
+
+alert: KafkaStatusWarning
+expr: kafka_brokers{team="mos"}
+  != 3 and kafka_brokers{team="mos"} != 7
+for: 10m
+labels:
+  severity: warning
+annotations:
+  description: openstack KafkaStatus {{ $labels.instance }} Warning
+  summary: openstack KafkaStatus Warning
+  
+###########################node.rules########################
+
+alert: nodeCpuLoadPressure
+expr: sum
+  by(instance, service_tags, service_id, service_address) (node_load15{team="mos"})
+  / ((count by(instance, service_tags, service_id, service_address) (node_cpu{mode="system"}))
+  or (count by(instance, service_tags, service_id, service_address) (node_cpu_seconds_total{mode="system"})))
+  > 0.75
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack node cpu_load15 {{ $labels.instance }} value {{ $value }}
+  summary: openstack node cpu_load15 > 0.75
+  
+alert: nodeCpuUsagePressure
+expr: (100
+  - (avg by(instance, service_id, service_tags) (irate(node_cpu{mode="idle"}[5m]))
+  * 100)) > 80 or (100 - (avg by(instance, service_id, service_tags) (irate(node_cpu_seconds_total{mode="idle",team="mos"}[5m]))
+  * 100)) > 80
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack node cpu usage {{ $labels.instance }} value {{ $value }}
+  summary: openstack node cpu usage > 80%
+  
+
+alert: nodeMemoryPressure
+expr: (node_memory_MemTotal{team="mos"}
+  - node_memory_MemFree{team="mos"} - node_memory_Buffers{team="mos"}
+  - node_memory_Cached{team="mos"} - node_memory_SwapCached{team="mos"}
+  - node_memory_Slab{team="mos"} - node_memory_PageTables{team="mos"}
+  - node_memory_VmallocUsed{team="mos"}) / node_memory_MemTotal{team="mos"}
+  > 0.9 or (node_memory_MemTotal_bytes{team="mos"} - node_memory_MemFree_bytes{team="mos"}
+  - node_memory_Buffers_bytes{team="mos"} - node_memory_Cached_bytes{team="mos"}
+  - node_memory_SwapCached_bytes{team="mos"} - node_memory_Slab_bytes{team="mos"}
+  - node_memory_PageTables_bytes{team="mos"} - node_memory_VmallocUsed_bytes{team="mos"})
+  / node_memory_MemTotal_bytes{team="mos"} > 0.9
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack node memory {{ $labels.instance }} value {{ $value }}
+  summary: openstack node memory usage > 0.9
+  
+alert: nodeDiskPressure
+expr: (((node_filesystem_size{device!~"tmpfs",mountpoint!="/boot",team="mos"}
+  - node_filesystem_avail{device!~"tmpfs",mountpoint!="/boot",team="mos"})
+  / node_filesystem_size{device!~"tmpfs",mountpoint!="/boot",team="mos"}))
+  > 0.8 or (((node_filesystem_size_bytes{device!~"tmpfs",mountpoint!="/boot",team="mos"}
+  - node_filesystem_avail_bytes{device!~"tmpfs",mountpoint!="/boot",team="mos"})
+  / node_filesystem_size_bytes{device!~"tmpfs",mountpoint!="/boot",team="mos"}))
+  > 0.8
+for: 1m
+labels:
+  severity: warning
+annotations:
+  description: openstack disk usage {{ $labels.instance }} value {{ $value }}
+  summary: openstack disk usage > 0.8
